@@ -1,0 +1,21 @@
+PING 192.168.7.1 (192.168.7.1) from 192.168.5.1 dn_veth: 56(84) bytes of data.
+64 bytes from 192.168.7.1: icmp_seq=1 ttl=64 time=1042 ms
+64 bytes from 192.168.7.1: icmp_seq=2 ttl=64 time=12.6 ms
+64 bytes from 192.168.7.1: icmp_seq=3 ttl=64 time=4.45 ms
+64 bytes from 192.168.7.1: icmp_seq=4 ttl=64 time=4.49 ms
+64 bytes from 192.168.7.1: icmp_seq=5 ttl=64 time=4.38 ms
+64 bytes from 192.168.7.1: icmp_seq=6 ttl=64 time=5.03 ms
+64 bytes from 192.168.7.1: icmp_seq=7 ttl=64 time=4.44 ms
+64 bytes from 192.168.7.1: icmp_seq=8 ttl=64 time=4.56 ms
+64 bytes from 192.168.7.1: icmp_seq=9 ttl=64 time=4.13 ms
+64 bytes from 192.168.7.1: icmp_seq=10 ttl=64 time=6.35 ms
+64 bytes from 192.168.7.1: icmp_seq=11 ttl=64 time=5.68 ms
+64 bytes from 192.168.7.1: icmp_seq=12 ttl=64 time=5.71 ms
+64 bytes from 192.168.7.1: icmp_seq=13 ttl=64 time=5.60 ms
+64 bytes from 192.168.7.1: icmp_seq=14 ttl=64 time=6.41 ms
+64 bytes from 192.168.7.1: icmp_seq=15 ttl=64 time=6.07 ms
+64 bytes from 192.168.7.1: icmp_seq=16 ttl=64 time=6.92 ms
+
+--- 192.168.7.1 ping statistics ---
+17 packets transmitted, 16 received, 5.88235% packet loss, time 16054ms
+rtt min/avg/max/mdev = 4.131/70.521/1041.563/250.729 ms, pipe 2

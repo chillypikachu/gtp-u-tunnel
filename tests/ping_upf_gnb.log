@@ -1,0 +1,12 @@
+PING 192.168.9.2 (192.168.9.2) from 192.168.9.1 upf_an_veth: 56(84) bytes of data.
+64 bytes from 192.168.9.2: icmp_seq=1 ttl=64 time=0.116 ms
+64 bytes from 192.168.9.2: icmp_seq=2 ttl=64 time=0.085 ms
+64 bytes from 192.168.9.2: icmp_seq=3 ttl=64 time=0.055 ms
+64 bytes from 192.168.9.2: icmp_seq=4 ttl=64 time=0.085 ms
+64 bytes from 192.168.9.2: icmp_seq=5 ttl=64 time=0.073 ms
+64 bytes from 192.168.9.2: icmp_seq=6 ttl=64 time=0.055 ms
+64 bytes from 192.168.9.2: icmp_seq=7 ttl=64 time=0.084 ms
+
+--- 192.168.9.2 ping statistics ---
+7 packets transmitted, 7 received, 0% packet loss, time 6145ms
+rtt min/avg/max/mdev = 0.055/0.079/0.116/0.019 ms
