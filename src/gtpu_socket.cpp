@@ -13,8 +13,8 @@ GtpuSocket::GtpuSocket() : fd_(socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0)) {
         throw std::runtime_error(std::string("UDP socket failed: ") + std::strerror(errno));
     }
 
-    sockaddr_in local{};
-    local.sin_family = AF_INET;
+    sockaddr_in local{}; 
+    local.sin_family = AF_INET; //IPv4
     local.sin_port = htons(2152);
 
     inet_pton(AF_INET, "192.168.9.1", &local.sin_addr);
@@ -40,7 +40,7 @@ ssize_t GtpuSocket::send_to_gnb(const std::vector<uint8_t>& packet) {
 
     do {
         result = sendto(fd_, packet.data(), packet.size(), 0, reinterpret_cast<const sockaddr*>(&gnb_), sizeof(gnb_));
-    } while (result == -1 && errno == EINTR);
+    } while (result == -1 && errno == EINTR); //EINTR — системный вызов прерван сигналом
 
     return result;
 }

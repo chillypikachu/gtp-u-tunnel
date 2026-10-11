@@ -24,8 +24,8 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
         ether_arp arp{};
         std::memcpy(&arp, buffer + sizeof(ether_header), sizeof(arp));
 
-        if (ntohs(arp.ea_hdr.ar_hrd) != ARPHRD_ETHER) return;
-        if (ntohs(arp.ea_hdr.ar_pro) != ETH_P_IP) return;
+        if (ntohs(arp.ea_hdr.ar_hrd) != ARPHRD_ETHER) return; //только Ethernet как аппаратный тип сети
+        if (ntohs(arp.ea_hdr.ar_pro) != ETH_P_IP) return; //ARP для IPv4
         if (arp.ea_hdr.ar_hln != ETH_ALEN || arp.ea_hdr.ar_pln != 4) return;
         if (ntohs(arp.ea_hdr.ar_op) != ARPOP_REQUEST) return;
 
@@ -35,7 +35,7 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
         if (table.find_by_ip(target_ip) == nullptr) return;
 
         ether_header reply_ethernet{};
-        std::memcpy(reply_ethernet.ether_dhost, arp.arp_sha, ETH_ALEN);
+        std::memcpy(reply_ethernet.ether_dhost, arp.arp_sha, ETH_ALEN); //arp_sha - MAC отправителя
         std::memcpy(reply_ethernet.ether_shost, raw_socket.mac().data(), ETH_ALEN);
         reply_ethernet.ether_type = htons(ETH_P_ARP);
 
@@ -44,7 +44,7 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
         reply_arp.ea_hdr.ar_op = htons(ARPOP_REPLY);
 
         std::memcpy(reply_arp.arp_sha, raw_socket.mac().data(), ETH_ALEN);
-        std::memcpy(reply_arp.arp_spa, arp.arp_tpa, 4);
+        std::memcpy(reply_arp.arp_spa, arp.arp_tpa, 4); //arp_spa - IP отправителя
         std::memcpy(reply_arp.arp_tha, arp.arp_sha, ETH_ALEN);
         std::memcpy(reply_arp.arp_tpa, arp.arp_spa, 4);
 
@@ -71,12 +71,12 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
 
     if (ip_header.version != 4) return;
 
-    const size_t ihl_bytes = static_cast<size_t>(ip_header.ihl) * 4;
+    const size_t ihl_bytes = static_cast<size_t>(ip_header.ihl) * 4; //Поле содержит длину в единицах по 4 байта
     const size_t total_size = ntohs(ip_header.tot_len);
 
     if (ihl_bytes < sizeof(iphdr) || ihl_bytes > layer3_size) return;
     if (total_size < ihl_bytes || total_size > layer3_size) return;
-    if (total_size > 65507 - 8) return;
+    if (total_size > 65507 - 8) return; //IP-пакет вместе с 8 байтами GTP-U помещается в максимально допустимую полезную нагрузку
 
     const UeSession* session = table.find_by_ip(ip_header.daddr);
     if (session == nullptr) return;
@@ -92,7 +92,7 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
 }
 
 void handle_uplink(RawSocket& raw_socket, const TunnelTable& table, const uint8_t* packet, size_t packet_size, const sockaddr_in& sender) {
-    if (sender.sin_addr.s_addr != inet_addr("192.168.9.2")) return;
+    if (sender.sin_addr.s_addr != inet_addr("192.168.9.2")) return; //пакеты только от ожидаемого IP gNB
     if (ntohs(sender.sin_port) != 2152) return;
 
     uint32_t teid{};

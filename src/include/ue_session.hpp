@@ -5,7 +5,7 @@
 
 struct UeSession {
     uint32_t ip;
-    uint32_t teid_dl;
+    uint32_t teid_dl; //числ идентификатор тун
     uint32_t teid_ul;
 };
 

@@ -16,7 +16,7 @@
 int main() {
     try {
         TunnelTable table;
-        RawSocket raw_socket("upf_cn_veth");
+        RawSocket raw_socket("upf_cn_veth"); //на DN
         GtpuSocket gtpu_socket;
 
         const int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
@@ -28,13 +28,16 @@ int main() {
         struct EpollGuard {
             int fd;
             ~EpollGuard() { close(fd); }
-        } epoll_guard{epoll_fd};
+        };
+
+        EpollGuard epoll_guard;
+        epoll_guard.fd = epoll_fd;
 
         epoll_event raw_event{};
-        raw_event.events = EPOLLIN;
+        raw_event.events = EPOLLIN; //EPOLLIN наличие входных данных
         raw_event.data.fd = raw_socket.fd();
 
-        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, raw_socket.fd(), &raw_event) == -1) {
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, raw_socket.fd(), &raw_event) == -1) { //добавляем дескрипторы
             throw std::runtime_error(std::string("epoll add RAW failed: ") + std::strerror(errno));
         }
 
@@ -63,15 +66,15 @@ int main() {
             for (int i = 0; i < count; ++i) {
                 const int ready_fd = events[i].data.fd;
 
-                if (events[i].events & EPOLLHUP) {
+                if (events[i].events & EPOLLHUP) { //закрытие соединения
                     throw std::runtime_error("Socket hangup");
                 }
 
-                if (events[i].events & EPOLLERR) {
+                if (events[i].events & EPOLLERR) { //есть ли оштбка на сокете
                     int socket_error = 0;
                     socklen_t error_size = sizeof(socket_error);
 
-                    if (getsockopt(ready_fd, SOL_SOCKET, SO_ERROR, &socket_error, &error_size) == -1) {
+                    if (getsockopt(ready_fd, SOL_SOCKET, SO_ERROR, &socket_error, &error_size) == -1) { //ошибка с конкретным сокетом
                         throw std::runtime_error(std::string("getsockopt failed: ") + std::strerror(errno));
                     }
 
@@ -80,13 +83,13 @@ int main() {
                     }
                 }
 
-                if (!(events[i].events & EPOLLIN)) continue;
+                if (!(events[i].events & EPOLLIN)) continue; //если нечего читать - дальше
 
                 if (ready_fd == raw_socket.fd()) {
                     const ssize_t received = raw_socket.receive(raw_buffer.data(), raw_buffer.size());
 
                     if (received == -1) {
-                        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) continue;
+                        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) continue; //EAGAIN данных нет
                         throw std::runtime_error(std::string("RAW receive failed: ") + std::strerror(errno));
                     }
 

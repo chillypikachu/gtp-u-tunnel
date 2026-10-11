@@ -27,7 +27,7 @@ RawSocket::RawSocket(const char* name) : fd_(socket(AF_PACKET, SOCK_RAW | SOCK_N
 
     sockaddr_ll address{};
     address.sll_family = AF_PACKET;
-    address.sll_protocol = htons(ETH_P_ALL);
+    address.sll_protocol = htons(ETH_P_ALL); //ETH_P_ALL — принимать все типы Ethernet-протоколов
     address.sll_ifindex = index;
 
     if (bind(fd_, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) == -1) {
@@ -39,7 +39,7 @@ RawSocket::RawSocket(const char* name) : fd_(socket(AF_PACKET, SOCK_RAW | SOCK_N
     ifreq request{};
     std::strncpy(request.ifr_name, name, IFNAMSIZ - 1);
 
-    if (ioctl(fd_, SIOCGIFHWADDR, &request) == -1) {
+    if (ioctl(fd_, SIOCGIFHWADDR, &request) == -1) { //управление вводом-выводом, SIOCGIFHWADDR — команда получения аппаратного адреса интерфейса
         const int saved_errno = errno;
         close(fd_);
         throw std::runtime_error(std::string("MAC lookup failed: ") + std::strerror(saved_errno));
