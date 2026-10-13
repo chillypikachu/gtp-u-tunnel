@@ -1,4 +1,5 @@
 #include "include/gtpu_socket.hpp"
+#include "include/protocol_constants.hpp"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -15,7 +16,7 @@ GtpuSocket::GtpuSocket() : fd_(socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0)) {
 
     sockaddr_in local{}; 
     local.sin_family = AF_INET; //IPv4
-    local.sin_port = htons(2152);
+    local.sin_port = htons(protocol::gtpu_port);
 
     inet_pton(AF_INET, "192.168.9.1", &local.sin_addr);
 
@@ -26,7 +27,7 @@ GtpuSocket::GtpuSocket() : fd_(socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0)) {
     }
 
     gnb_.sin_family = AF_INET;
-    gnb_.sin_port = htons(2152);
+    gnb_.sin_port = htons(protocol::gtpu_port);
 
     inet_pton(AF_INET, "192.168.9.2", &gnb_.sin_addr);
 }
@@ -35,7 +36,7 @@ GtpuSocket::~GtpuSocket() {
     close(fd_);
 }
 
-ssize_t GtpuSocket::send_to_gnb(const std::vector<uint8_t>& packet) {
+ssize_t GtpuSocket::send_to_gnb(std::span<const uint8_t> packet) {
     ssize_t result;
 
     do {
@@ -45,10 +46,10 @@ ssize_t GtpuSocket::send_to_gnb(const std::vector<uint8_t>& packet) {
     return result;
 }
 
-ssize_t GtpuSocket::receive(uint8_t* buffer, size_t buffer_size, sockaddr_in& sender) {
+ssize_t GtpuSocket::receive(std::span<uint8_t> buffer, sockaddr_in& sender) {
     socklen_t sender_size = sizeof(sender);
 
-    return recvfrom(fd_, buffer, buffer_size, 0, reinterpret_cast<sockaddr*>(&sender), &sender_size);
+    return recvfrom(fd_, buffer.data(), buffer.size(), 0, reinterpret_cast<sockaddr*>(&sender), &sender_size);
 }
 
 int GtpuSocket::fd() const {

@@ -86,7 +86,7 @@ int main() {
                 if (!(events[i].events & EPOLLIN)) continue; //если нечего читать - дальше
 
                 if (ready_fd == raw_socket.fd()) {
-                    const ssize_t received = raw_socket.receive(raw_buffer.data(), raw_buffer.size());
+                    const ssize_t received = raw_socket.receive(raw_buffer);
 
                     if (received == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) continue; //EAGAIN данных нет
@@ -95,12 +95,12 @@ int main() {
 
                     if (received == 0) continue;
 
-                    handle_downlink(raw_socket, gtpu_socket, table, raw_buffer.data(), static_cast<size_t>(received));
+                    handle_downlink(raw_socket, gtpu_socket, table, std::span{raw_buffer.data(), static_cast<size_t>(received)});
                 }
 
                 if (ready_fd == gtpu_socket.fd()) {
                     sockaddr_in sender{};
-                    const ssize_t received = gtpu_socket.receive(gtpu_buffer.data(), gtpu_buffer.size(), sender);
+                    const ssize_t received = gtpu_socket.receive(gtpu_buffer, sender);
 
                     if (received == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) continue;
@@ -110,7 +110,7 @@ int main() {
 
                     if (received == 0) continue;
 
-                    handle_uplink(raw_socket, table, gtpu_buffer.data(), static_cast<size_t>(received), sender);
+                    handle_uplink(raw_socket, table, std::span{gtpu_buffer.data(), static_cast<size_t>(received)}, sender);
                 }
             }
         }

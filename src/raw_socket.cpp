@@ -52,12 +52,12 @@ RawSocket::~RawSocket() {
     close(fd_);
 }
 
-ssize_t RawSocket::receive(uint8_t* buffer, size_t buffer_size) {
-    return recv(fd_, buffer, buffer_size, 0);
+ssize_t RawSocket::receive(std::span<uint8_t> buffer) {
+    return recv(fd_, buffer.data(), buffer.size(), 0);
 }
 
-ssize_t RawSocket::send_to(const uint8_t* buffer, size_t buffer_size) {
-    return send(fd_, buffer, buffer_size, 0);
+ssize_t RawSocket::send_to(std::span<const uint8_t> buffer) {
+    return send(fd_, buffer.data(), buffer.size(), 0);
 }
 
 const std::array<uint8_t, 6>& RawSocket::mac() const {

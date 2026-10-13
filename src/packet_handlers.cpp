@@ -1,5 +1,6 @@
 #include "include/packet_handlers.hpp"
 #include "include/gtpu.hpp"
+#include "include/protocol_constants.hpp"
 
 #include <arpa/inet.h>
 #include <array>
@@ -12,17 +13,17 @@
 #include <netinet/ip.h>
 #include <vector>
 
-void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const TunnelTable& table, const uint8_t* buffer, size_t size) {
-    if (size < sizeof(ether_header)) return;
+void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const TunnelTable& table, std::span<const uint8_t> buffer) {
+    if (buffer.size() < sizeof(ether_header)) return;
 
     ether_header ethernet{};
-    std::memcpy(&ethernet, buffer, sizeof(ethernet));
+    std::memcpy(&ethernet, buffer.data(), sizeof(ethernet));
 
     if (ntohs(ethernet.ether_type) == ETH_P_ARP) {
-        if (size < sizeof(ether_header) + sizeof(ether_arp)) return;
+        if (buffer.size() < sizeof(ether_header) + sizeof(ether_arp)) return;
 
         ether_arp arp{};
-        std::memcpy(&arp, buffer + sizeof(ether_header), sizeof(arp));
+        std::memcpy(&arp, buffer.data() + sizeof(ether_header), sizeof(arp));
 
         if (ntohs(arp.ea_hdr.ar_hrd) != ARPHRD_ETHER) return; //только Ethernet как аппаратный тип сети
         if (ntohs(arp.ea_hdr.ar_pro) != ETH_P_IP) return; //ARP для IPv4
@@ -52,7 +53,7 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
         std::memcpy(reply.data(), &reply_ethernet, sizeof(reply_ethernet));
         std::memcpy(reply.data() + sizeof(reply_ethernet), &reply_arp, sizeof(reply_arp));
 
-        const ssize_t sent = raw_socket.send_to(reply.data(), reply.size());
+        const ssize_t sent = raw_socket.send_to(reply);
 
         if (sent == -1) {
             std::cerr << "ARP send error: " << std::strerror(errno) << std::endl;
@@ -63,11 +64,11 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
 
     if (ntohs(ethernet.ether_type) != ETH_P_IP) return;
 
-    const size_t layer3_size = size - sizeof(ether_header);
+    const size_t layer3_size = buffer.size() - sizeof(ether_header);
     if (layer3_size < sizeof(iphdr)) return;
 
     iphdr ip_header{};
-    std::memcpy(&ip_header, buffer + sizeof(ether_header), sizeof(ip_header));
+    std::memcpy(&ip_header, buffer.data() + sizeof(ether_header), sizeof(ip_header));
 
     if (ip_header.version != 4) return;
 
@@ -76,12 +77,12 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
 
     if (ihl_bytes < sizeof(iphdr) || ihl_bytes > layer3_size) return;
     if (total_size < ihl_bytes || total_size > layer3_size) return;
-    if (total_size > 65507 - 8) return; //IP-пакет вместе с 8 байтами GTP-U помещается в максимально допустимую полезную нагрузку
+    if (total_size > protocol::max_ipv4_payload - gtpu::header_size) return; //IP-пакет вместе с 8 байтами GTP-U помещается в максимально допустимую полезную нагрузку
 
     const UeSession* session = table.find_by_ip(ip_header.daddr);
     if (session == nullptr) return;
 
-    const std::vector<uint8_t> gtpu_packet = encode_gtpu(session->teid_dl, buffer + sizeof(ether_header), total_size);
+    const std::vector<uint8_t> gtpu_packet = encode_gtpu(session->teid_dl, std::span{buffer.data() + sizeof(ether_header), total_size});
     const ssize_t sent = gtpu_socket.send_to_gnb(gtpu_packet);
 
     if (sent == -1) {
@@ -91,22 +92,22 @@ void handle_downlink(RawSocket& raw_socket, GtpuSocket& gtpu_socket, const Tunne
     }
 }
 
-void handle_uplink(RawSocket& raw_socket, const TunnelTable& table, const uint8_t* packet, size_t packet_size, const sockaddr_in& sender) {
-    if (sender.sin_addr.s_addr != inet_addr("192.168.9.2")) return; //пакеты только от ожидаемого IP gNB
-    if (ntohs(sender.sin_port) != 2152) return;
+void handle_uplink(RawSocket& raw_socket, const TunnelTable& table, std::span<const uint8_t> packet, const sockaddr_in& sender) {
+    if (sender.sin_addr.s_addr != inet_addr(protocol::gnb_address)) return;
+    if (ntohs(sender.sin_port) != protocol::gtpu_port) return;
 
-    uint32_t teid{};
-    const uint8_t* ip_packet = nullptr;
-    size_t ip_size = 0;
-
-    if (!decode_gtpu(packet, packet_size, teid, ip_packet, ip_size)) return;
+    const auto decoded = decode_gtpu(packet);
+    if (!decoded) return;
+    const uint32_t teid = decoded->teid;
+    const auto ip_packet = decoded->payload;
+    const size_t ip_size = ip_packet.size();
 
     const UeSession* session = table.find_by_teid_ul(teid);
     if (session == nullptr) return;
     if (ip_size < sizeof(iphdr)) return;
 
     iphdr ip_header{};
-    std::memcpy(&ip_header, ip_packet, sizeof(ip_header));
+    std::memcpy(&ip_header, ip_packet.data(), sizeof(ip_header));
 
     if (ip_header.version != 4) return;
 
@@ -128,9 +129,9 @@ void handle_uplink(RawSocket& raw_socket, const TunnelTable& table, const uint8_
 
     std::vector<uint8_t> frame(sizeof(ether_header) + total_size);
     std::memcpy(frame.data(), &ethernet, sizeof(ethernet));
-    std::memcpy(frame.data() + sizeof(ethernet), ip_packet, total_size);
+    std::memcpy(frame.data() + sizeof(ethernet), ip_packet.data(), total_size);
 
-    const ssize_t sent = raw_socket.send_to(frame.data(), frame.size());
+    const ssize_t sent = raw_socket.send_to(frame);
 
     if (sent == -1) {
         std::cerr << "Uplink send error: " << std::strerror(errno) << std::endl;

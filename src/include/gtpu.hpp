@@ -3,7 +3,16 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <span>
+#include <optional>
 
-std::vector<uint8_t> encode_gtpu(uint32_t teid, const uint8_t* ip_packet, size_t ip_size);
+namespace gtpu {
+inline constexpr std::size_t header_size = 8;
+inline constexpr std::uint8_t flags = 0x30;
+inline constexpr std::uint8_t g_pdu_message_type = 0xff;
+}
 
-bool decode_gtpu(const uint8_t* packet, size_t packet_size, uint32_t& teid, const uint8_t*& payload, size_t& payload_size);
+std::vector<uint8_t> encode_gtpu(uint32_t teid, std::span<const uint8_t> ip_packet);
+
+struct DecodedGtpu { uint32_t teid; std::span<const uint8_t> payload; };
+std::optional<DecodedGtpu> decode_gtpu(std::span<const uint8_t> packet);

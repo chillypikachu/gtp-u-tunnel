@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <sys/types.h>
+#include <span>
 
 class RawSocket {
     int fd_;
@@ -16,8 +17,8 @@ public:
     RawSocket(const RawSocket&) = delete;
     RawSocket& operator=(const RawSocket&) = delete;
 
-    ssize_t receive(uint8_t* buffer, size_t buffer_size);
-    ssize_t send_to(const uint8_t* buffer, size_t buffer_size);
+    ssize_t receive(std::span<uint8_t> buffer);
+    ssize_t send_to(std::span<const uint8_t> buffer);
 
     const std::array<uint8_t, 6>& mac() const;
     int fd() const;

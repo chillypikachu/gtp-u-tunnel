@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <vector>
+#include <span>
 
 class GtpuSocket {
     int fd_;
@@ -17,8 +18,8 @@ public:
     GtpuSocket(const GtpuSocket&) = delete;
     GtpuSocket& operator=(const GtpuSocket&) = delete;
 
-    ssize_t send_to_gnb(const std::vector<uint8_t>& packet);
-    ssize_t receive(uint8_t* buffer, size_t buffer_size, sockaddr_in& sender);
+    ssize_t send_to_gnb(std::span<const uint8_t> packet);
+    ssize_t receive(std::span<uint8_t> buffer, sockaddr_in& sender);
 
     int fd() const;
 };
